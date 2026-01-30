@@ -3,42 +3,44 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useSpring, useMotionValue, useTransform, useScroll } from 'framer-motion';
 
-const frameCount = 80; // 80 frame high-res sequence
+const frameCount = 80;
 const images: HTMLImageElement[] = [];
 
-// Preload images from the sequence directory with staggering to save bandwidth on initial load
+// Resolution Tiering: Use smaller assets for mobile to save bandwidth/memory
+const getAssetConfig = (isMobile: boolean) => ({
+  path: isMobile ? '/images/hero-sequence/' : '/images/hero-new-sequence/',
+  prefix: isMobile ? 'Exploding_Tea_Packet_Animation_' : 'Create_a_video_1080p_202601292134_',
+  increment: isMobile ? 2 : 1 // Mobile skips frames to stay fluid
+});
+
 const preloadImages = (isMobile: boolean) => {
   if (images.length > 0) return;
-
-  // Optimized Loading Strategy:
-  // Mobile: Load every 2nd frame (40 total) to save memory/bandwidth
-  // Desktop: Load full 80 frames
-  const increment = isMobile ? 2 : 1;
+  const config = getAssetConfig(isMobile);
 
   for (let i = 0; i < frameCount; i++) {
     const img = new Image();
     const formattedIndex = i.toString().padStart(3, '0');
 
-    // On mobile, we only set src for the indices we'll actually use
-    if (!isMobile || i % increment === 0) {
-      if (i < 15) { // Priority Batch
-        img.src = `/images/hero-new-sequence/Create_a_video_1080p_202601292134_${formattedIndex}.jpg`;
+    // Priority: Only set SRC for frames we will actually render
+    if (!isMobile || i % config.increment === 0) {
+      if (i < 12) { // Immediate Priority Batch
+        img.src = `${config.path}${config.prefix}${formattedIndex}.jpg`;
       }
     }
     images.push(img);
   }
 
-  // Secondary Batch Loading
+  // Secondary Batch
   setTimeout(() => {
     for (let i = 0; i < frameCount; i++) {
-      if (!isMobile || i % increment === 0) {
-        const formattedIndex = i.toString().padStart(3, '0');
-        if (!images[i].src) {
-           images[i].src = `/images/hero-new-sequence/Create_a_video_1080p_202601292134_${formattedIndex}.jpg`;
+        if (!isMobile || i % config.increment === 0) {
+            if (!images[i].src) {
+                const formattedIndex = i.toString().padStart(3, '0');
+                images[i].src = `${config.path}${config.prefix}${formattedIndex}.jpg`;
+            }
         }
-      }
     }
-  }, 1000);
+  }, 800);
 };
 
 interface HeroSequenceProps {
@@ -51,31 +53,29 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Scroll Progress
   const { scrollYProgress } = useScroll({
     target: scrollRef,
     offset: ["start start", "end end"]
   });
 
-  // Smooth Scroll Physics - Adjusted for mobile vs desktop
   const smoothProgress = useSpring(scrollYProgress, {
     stiffness: isMobile ? 120 : 200,
-    damping: isMobile ? 40 : 30,
+    damping: isMobile ? 45 : 30, // Higher damping on mobile for stability
     mass: 0.5
   });
 
-  // Map 0-1 scroll progress to 0-79 frame index
   const frameIndex = useTransform(smoothProgress, [0, 1], [0, frameCount - 1]);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    preloadImages(window.innerWidth < 768);
+    const mobileCheck = window.innerWidth < 768;
+    setIsMobile(mobileCheck);
+    preloadImages(mobileCheck);
 
     const checkLoad = setInterval(() => {
        let loadedCount = 0;
        images.forEach(img => { if(img.complete && img.src) loadedCount++; });
-       if (loadedCount > 10) {
+       // Logic Gate: Start as soon as we have enough for the intro
+       if (loadedCount > 8) {
            setIsLoaded(true);
            clearInterval(checkLoad);
        }
@@ -83,33 +83,32 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     return () => clearInterval(checkLoad);
   }, []);
 
-  // Optimized Rendering Loop (RAF based)
+  // Performance Optimized Rendering Loop (RAF)
   useEffect(() => {
     if (!isLoaded) return;
 
     let rafId: number;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const context = canvas.getContext('2d', { alpha: false }); // Performance optimization
+    const context = canvas.getContext('2d', { alpha: false, desynchronized: true });
     if (!context) return;
 
     const render = () => {
       const idx = Math.round(frameIndex.get());
       const img = images[idx];
 
-      // On mobile, if the specific index isn't loaded (because we skipped it),
-      // find the nearest loaded neighbor
+      // Adaptive Recovery: Find the closest loaded frame if desired frame is missing
       let finalImg = img;
       if (!img?.complete) {
-          // Find nearest available
-          for(let shift = 1; shift < 5; shift++) {
+          for(let shift = 1; shift < 4; shift++) {
               if (images[idx-shift]?.complete) { finalImg = images[idx-shift]; break; }
               if (images[idx+shift]?.complete) { finalImg = images[idx+shift]; break; }
           }
       }
 
       if (finalImg && finalImg.complete) {
-        const dpr = window.devicePixelRatio || 1;
+        // DPI Capping: Avoid 3x+ rendering on mobile which chokes GPUs
+        const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
         const cssWidth = window.innerWidth;
         const cssHeight = window.innerHeight;
 
@@ -122,7 +121,6 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
         const canvasRatio = cssWidth / cssHeight;
 
         let drawWidth, drawHeight, offsetX, offsetY;
-
         if (canvasRatio > imgRatio) {
             drawWidth = cssWidth;
             drawHeight = cssWidth / imgRatio;
@@ -130,14 +128,13 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
             drawHeight = cssHeight;
             drawWidth = cssHeight * imgRatio;
         }
-
         offsetX = (cssWidth - drawWidth) / 2;
         offsetY = (cssHeight - drawHeight) / 2;
 
         context.save();
         context.scale(dpr, dpr);
 
-        // Mobile optimization: Disable shadows/blur on mobile to save GPU
+        // GPU Shortcut: No heavy shadows on mobile
         if (!isMobile && idx > 15 && idx < 45) {
           context.shadowBlur = 40;
           context.shadowColor = "rgba(50, 8, 8, 0.4)";
@@ -154,7 +151,7 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     return () => cancelAnimationFrame(rafId);
   }, [isLoaded, isMobile, frameIndex]);
 
-  // Mouse Parallax (Desktop Only)
+  // Mouse Parallax (Optimized for desktop only)
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const glowX = useTransform(mouseX, [-0.5, 0.5], [-50, 50]);
@@ -162,10 +159,10 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isMobile) return;
-    const { clientX, clientY } = e;
-    const { innerWidth, innerHeight } = window;
-    mouseX.set((clientX / innerWidth) - 0.5);
-    mouseY.set((clientY / innerHeight) - 0.5);
+    const x = (e.clientX / window.innerWidth) - 0.5;
+    const y = (e.clientY / window.innerHeight) - 0.5;
+    mouseX.set(x);
+    mouseY.set(y);
   };
 
   return (
@@ -173,9 +170,10 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
       ref={containerRef}
       className="fixed inset-0 w-screen h-dvh bg-[#0a0505] overflow-hidden z-0"
       onMouseMove={handleMouseMove}
+      style={{ willChange: 'transform' }} // Promoting to Compositor Layer
     >
       <div className="absolute inset-0 h-full w-full overflow-hidden">
-        {/* Decorative Glow */}
+        {/* Ambient Glow */}
         {!isMobile && (
           <motion.div
             style={{ x: glowX, y: glowY, scale: 1.5 }}
@@ -185,7 +183,7 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
           </motion.div>
         )}
 
-        {/* Main Canvas */}
+        {/* Core Canvas */}
         <div className="w-full h-full flex items-center justify-center z-20 pointer-events-none">
           <canvas
             ref={canvasRef}
@@ -193,16 +191,17 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
           />
         </div>
 
+        {/* Performance Preloader */}
         {!isLoaded && (
           <div className="absolute inset-0 flex items-center justify-center z-50 bg-[#0a0505]">
               <div className="text-center">
-                  <div className="w-12 h-12 border-2 border-[var(--accent-hover)] border-t-transparent rounded-full animate-spin mx-auto mb-6" />
-                  <p className="text-sm uppercase tracking-[0.4em] text-[var(--accent-hover)] font-bold opacity-60">Mastering the Blend</p>
+                  <div className="w-10 h-10 border-2 border-[var(--accent-hover)] border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+                  <p className="text-[10px] uppercase tracking-[0.5em] text-[var(--accent-hover)] font-bold opacity-40">Mastering the Blend</p>
               </div>
           </div>
         )}
 
-        {/* Cinematic Vignette */}
+        {/* Global Post-Processing */}
         <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-black/40 pointer-events-none z-30" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0a0505] to-transparent z-40 pointer-events-none" />
       </div>
