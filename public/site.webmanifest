@@ -1,0 +1,42 @@
+{
+  "name": "Ruby Tea - Premium Tea from Bihar",
+  "short_name": "Ruby Tea",
+  "description": "Experience the finest Ruby Tea blends from Panchatiya Akhara, Gaya Bihar. Premium quality tea with traditional roots and modern craftsmanship.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fef3c7",
+  "theme_color": "#d97706",
+  "orientation": "portrait-primary",
+  "categories": ["food", "shopping", "lifestyle"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
