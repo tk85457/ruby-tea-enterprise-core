@@ -10,7 +10,10 @@ import { useCart } from '../../lib/CartContext';
 import { FaSearch, FaFilter } from 'react-icons/fa';
 import { Product } from '../../lib/types';
 
+import { useRouter } from 'next/navigation';
+
 export default function ProductsPage() {
+  const router = useRouter();
   const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +71,7 @@ export default function ProductsPage() {
 
       {/* Banner */}
       <section className="py-40 bg-[var(--bg-primary)] relative border-b border-[var(--border-color)]">
+        {/* ... (banner content) */}
         <div className="absolute inset-0 bg-[var(--accent)]/5 pointer-events-none" />
         <div className="container mx-auto px-4 text-center relative z-10">
           <motion.span
@@ -155,11 +159,11 @@ export default function ProductsPage() {
               {filteredProducts.map((product, idx) => (
                 <motion.div
                   key={product._id || product.id || `product-${idx}`}
-                  className="group"
+                  className="group cursor-pointer"
                   variants={itemVariants}
+                  onClick={() => router.push(`/products/${product.slug || product._id || product.id}`)}
                 >
                    <div className="relative aspect-[4/5] overflow-hidden rounded-[2.5rem] bg-[var(--bg-card)] border border-[var(--border-color)] mb-8 transition-colors duration-500">
-                     <Link href={`/products/${product.slug || product._id || product.id}`} className="absolute inset-0 z-0" aria-label={`View ${product.name}`} />
                      {product.image ? (
                         <Image
                           src={product.image}
@@ -175,22 +179,35 @@ export default function ProductsPage() {
                   </div>
 
                    <div className="text-center px-4 relative z-10">
-                    <Link href={`/products/${product.slug || product._id || product.id}`}>
-                     <h3 className="text-2xl font-bold font-serif text-[var(--text-heading)] mb-2 tracking-wide group-hover:text-[var(--accent-hover)] transition-colors">{product.name}</h3>
-                    </Link>
+                    <h3 className="text-2xl font-bold font-serif text-[var(--text-heading)] mb-2 tracking-wide group-hover:text-[var(--accent-hover)] transition-colors">{product.name}</h3>
                     <div className="flex items-center justify-center gap-4 mb-8">
                        <span className="text-[var(--accent-hover)] font-bold text-lg tracking-widest">₹{product.price}</span>
                        <div className="h-[1px] w-8 bg-[var(--accent-hover)] opacity-30" />
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        addToCart(product);
-                      }}
-                      className="btn-primary w-full text-xs relative z-20 cursor-pointer"
-                    >
-                      Inquire Essence
-                    </button>
+
+                    <div className="flex gap-3 relative z-20">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          addToCart(product);
+                          window.location.href = '/checkout';
+                        }}
+                        className="flex-1 bg-[var(--accent)] text-[var(--btn-text)] py-3 rounded-full text-[10px] uppercase font-bold tracking-wider hover:bg-[var(--accent-hover)] hover:text-[var(--btn-text-hover)] transition-colors shadow-lg"
+                      >
+                        Buy Now
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          addToCart(product);
+                        }}
+                        className="flex-1 border border-[var(--accent)] text-[var(--accent)] py-3 rounded-full text-[10px] uppercase font-bold tracking-wider hover:bg-[var(--accent)] hover:text-[var(--btn-text)] transition-colors"
+                      >
+                        Add to Cart
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
