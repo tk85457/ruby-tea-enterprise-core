@@ -10,11 +10,11 @@ export const products: Product[] = [
     shortDescription: 'Signature Assam blend with rich, malty flavor and authentic Indian character.',
     price: 450,
     originalPrice: 500,
-    image: '/products/classic-ruby-tea.jpg',
+    image: '/products/classic-ruby-tea.webp',
     images: [
-      '/products/classic-ruby-tea.jpg',
-      '/products/classic-ruby-tea-2.jpg',
-      '/products/classic-ruby-tea-3.jpg'
+      '/products/classic-ruby-tea.webp',
+      '/products/classic-ruby-tea-2.webp',
+      '/products/classic-ruby-tea-3.webp'
     ],
     category: 'Black Tea',
     tags: ['assam', 'classic', 'premium', 'traditional'],
@@ -38,10 +38,10 @@ export const products: Product[] = [
     description: 'A harmonious blend of our premium Assam tea enhanced with aromatic cardamom pods. The warm, spicy notes of elaichi complement the robust tea base, creating a soothing and invigorating experience perfect for any time of day.',
     shortDescription: 'Assam tea infused with aromatic cardamom for a warm, spicy experience.',
     price: 480,
-    image: '/products/elaichi-ruby-tea.jpg',
+    image: '/products/elaichi-ruby-tea.webp',
     images: [
-      '/products/elaichi-ruby-tea.jpg',
-      '/products/elaichi-ruby-tea-2.jpg'
+      '/products/elaichi-ruby-tea.webp',
+      '/products/elaichi-ruby-tea-2.webp'
     ],
     category: 'Flavored Tea',
     tags: ['cardamom', 'spiced', 'aromatic', 'soothing'],
@@ -66,11 +66,11 @@ export const products: Product[] = [
     shortDescription: 'Traditional Indian masala chai with Assam tea and aromatic spices.',
     price: 520,
     originalPrice: 600,
-    image: '/products/masala-ruby-tea.jpg',
+    image: '/products/masala-ruby-tea.webp',
     images: [
-      '/products/masala-ruby-tea.jpg',
-      '/products/masala-ruby-tea-2.jpg',
-      '/products/masala-ruby-tea-3.jpg'
+      '/products/masala-ruby-tea.webp',
+      '/products/masala-ruby-tea-2.webp',
+      '/products/masala-ruby-tea-3.webp'
     ],
     category: 'Masala Tea',
     tags: ['masala', 'spiced', 'traditional', 'warming'],
@@ -94,10 +94,10 @@ export const products: Product[] = [
     description: 'Premium green tea from the misty hills of Darjeeling, hand-picked and minimally processed to preserve its delicate flavor and health benefits. Light, refreshing, and packed with antioxidants.',
     shortDescription: 'Premium Darjeeling green tea, light and refreshing with maximum health benefits.',
     price: 550,
-    image: '/products/green-ruby-tea.jpg',
+    image: '/products/green-ruby-tea.webp',
     images: [
-      '/products/green-ruby-tea.jpg',
-      '/products/green-ruby-tea-2.jpg'
+      '/products/green-ruby-tea.webp',
+      '/products/green-ruby-tea-2.webp'
     ],
     category: 'Green Tea',
     tags: ['green', 'darjeeling', 'health', 'antioxidants'],
@@ -121,9 +121,9 @@ export const products: Product[] = [
     description: 'A caffeine-free blend of premium herbs and flowers including chamomile, peppermint, and hibiscus. Perfect for evening relaxation or as a healthy alternative to traditional tea.',
     shortDescription: 'Caffeine-free herbal infusion with chamomile, peppermint, and hibiscus.',
     price: 420,
-    image: '/products/herbal-ruby-infusion.jpg',
+    image: '/products/herbal-ruby-infusion.webp',
     images: [
-      '/products/herbal-ruby-infusion.jpg'
+      '/products/herbal-ruby-infusion.webp'
     ],
     category: 'Herbal Tea',
     tags: ['herbal', 'caffeine-free', 'relaxing', 'health'],
@@ -148,10 +148,10 @@ export const products: Product[] = [
     shortDescription: 'Luxurious gift set with our three signature blends in an elegant presentation box.',
     price: 1350,
     originalPrice: 1500,
-    image: '/products/premium-ruby-gift-set.jpg',
+    image: '/products/premium-ruby-gift-set.webp',
     images: [
-      '/products/premium-ruby-gift-set.jpg',
-      '/products/premium-ruby-gift-set-2.jpg'
+      '/products/premium-ruby-gift-set.webp',
+      '/products/premium-ruby-gift-set-2.webp'
     ],
     category: 'Gift Sets',
     tags: ['gift', 'premium', 'collection', 'luxury'],

@@ -223,9 +223,31 @@ export default function Home() {
                   <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-transparent to-transparent opacity-60" />
                 </div>
                 <h3 className="text-xl font-bold font-serif text-[var(--text-heading)] mb-3 tracking-wide">{product.name}</h3>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6 mb-6">
                    <span className="text-[var(--accent-hover)] font-bold text-lg">₹{product.price}</span>
                    <div className="h-[1px] flex-grow bg-[var(--border-color)]" />
+                </div>
+
+                <div className="flex gap-3 relative z-20">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      addToCart(product);
+                      window.location.href = '/checkout';
+                    }}
+                    className="flex-1 bg-[var(--accent)] text-[var(--btn-text)] py-2 rounded-full text-[10px] uppercase font-bold tracking-wider hover:bg-[var(--accent-hover)] hover:text-[var(--btn-text-hover)] transition-colors"
+                  >
+                    Buy Now
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      addToCart(product);
+                    }}
+                    className="flex-1 border border-[var(--accent)] text-[var(--accent)] py-2 rounded-full text-[10px] uppercase font-bold tracking-wider hover:bg-[var(--accent)] hover:text-[var(--btn-text)] transition-colors"
+                  >
+                    Add to Cart
+                  </button>
                 </div>
               </motion.div>
             ))}

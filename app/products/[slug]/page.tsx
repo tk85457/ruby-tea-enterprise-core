@@ -177,14 +177,26 @@ export default function ProductDetailPage() {
                 </p>
 
                 {/* Add to Cart */}
-                <div className="flex gap-6 mb-16">
+                {/* Actions */}
+                <div className="flex flex-col sm:flex-row gap-4 mb-16">
+                  <button
+                    onClick={() => {
+                      addToCart(product!);
+                      window.location.href = '/checkout'; // Direct to checkout
+                    }}
+                    disabled={!product.inStock}
+                    className="flex-1 btn-primary py-4 text-sm flex items-center justify-center gap-3 group shadow-lg hover:shadow-[var(--accent)]/20"
+                  >
+                    <span>{product.inStock ? 'Buy Now' : 'Out of Stock'}</span>
+                    <FaShoppingBag className="group-hover:scale-110 transition-transform" />
+                  </button>
+
                   <button
                     onClick={() => addToCart(product!)}
                     disabled={!product.inStock}
-                    className="flex-1 btn-primary py-6 text-sm flex items-center justify-center gap-4 group"
+                    className="flex-1 btn-secondary py-4 text-sm flex items-center justify-center gap-3 group"
                   >
-                    <span>{product.inStock ? 'Acquire Essence' : 'Out of Stock'}</span>
-                    <FaShoppingBag className="group-hover:scale-110 transition-transform" />
+                    <span>Add to Cart</span>
                   </button>
                 </div>
 

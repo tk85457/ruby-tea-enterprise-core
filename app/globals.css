@@ -18,21 +18,25 @@
 
   --font-serif: 'Playfair Display', 'Cinzel', serif;
   --font-sans: 'Poppins', 'Inter', sans-serif;
+
+  /* Aliases for secondary components */
+  --gold-royal: #D4AF37;
+  --coffee-dark: #1C120B;
 }
 
 /* Theme B: Ivory Minimal Luxury (Personality Switch) */
 .theme-ivory {
   --bg-primary: #FAF7F2;
   --bg-gradient: linear-gradient(180deg, #FAF7F2 0%, #F1ECE4 100%);
-  --bg-card: #F1ECE4;
-  --text-heading: #2A1A12;
-  --text-body: #4A3A30;
+  --bg-card: #FFFFFF; /* Cleaner white for cards */
+  --text-heading: #1C120B; /* Deepest brown/black for headings */
+  --text-body: #3B2416; /* Dark brown for body text */
   --text-muted: #6A5A4E;
-  --accent: #2A1A12; /* Dark Espresso button base */
-  --accent-hover: #C6A45E; /* Antique Gold hover */
+  --accent: #2A1A12;
+  --accent-hover: #AB882E; /* Gold that pops on white */
   --btn-text: #FAF7F2;
   --btn-text-hover: #2A1A12;
-  --border-color: rgba(42, 26, 18, 0.1);
+  --border-color: rgba(42, 26, 18, 0.15);
 }
 
 body {

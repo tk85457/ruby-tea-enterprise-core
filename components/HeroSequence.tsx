@@ -7,38 +7,42 @@ const frameCount = 80; // 80 frame high-res sequence
 const images: HTMLImageElement[] = [];
 
 // Preload images from the sequence directory with staggering to save bandwidth on initial load
+const getAssetConfig = (isMobile: boolean) => ({
+  // Using the high-fidelity sequence for all devices as requested
+  path: '/images/hero-sequence/',
+  prefix: 'Create_a_video_1080p_202601292134_',
+  frameCount: 80,
+  increment: 1
+});
+
 const preloadImages = (isMobile: boolean) => {
   if (images.length > 0) return;
+  const config = getAssetConfig(isMobile);
 
-  // Optimized Loading Strategy:
-  // Mobile: Load every 2nd frame (40 total) to save memory/bandwidth
-  // Desktop: Load full 80 frames
-  const increment = isMobile ? 2 : 1;
-
-  for (let i = 0; i < frameCount; i++) {
+  for (let i = 0; i < config.frameCount; i++) {
     const img = new Image();
     const formattedIndex = i.toString().padStart(3, '0');
 
-    // On mobile, we only set src for the indices we'll actually use
-    if (!isMobile || i % increment === 0) {
-      if (i < 15) { // Priority Batch
-        img.src = `/images/hero-new-sequence/Create_a_video_1080p_202601292134_${formattedIndex}.jpg`;
+    // Priority: Only set SRC for frames we will actually render
+    if (!isMobile || i % config.increment === 0) {
+      if (i < 12) { // Immediate Priority Batch
+        img.src = `${config.path}${config.prefix}${formattedIndex}.webp`;
       }
     }
     images.push(img);
   }
 
-  // Secondary Batch Loading
+  // Secondary Batch
   setTimeout(() => {
-    for (let i = 0; i < frameCount; i++) {
-      if (!isMobile || i % increment === 0) {
-        const formattedIndex = i.toString().padStart(3, '0');
-        if (!images[i].src) {
-           images[i].src = `/images/hero-new-sequence/Create_a_video_1080p_202601292134_${formattedIndex}.jpg`;
+    for (let i = 0; i < config.frameCount; i++) {
+        if (!isMobile || i % config.increment === 0) {
+            if (!images[i].src) {
+                const formattedIndex = i.toString().padStart(3, '0');
+                images[i].src = `${config.path}${config.prefix}${formattedIndex}.webp`;
+            }
         }
-      }
     }
-  }, 1000);
+  }, 800);
 };
 
 interface HeroSequenceProps {
@@ -64,8 +68,8 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     mass: 0.5
   });
 
-  // Map 0-1 scroll progress to 0-79 frame index
-  const frameIndex = useTransform(smoothProgress, [0, 1], [0, frameCount - 1]);
+  // Map 0-1 scroll progress to 0-frame index
+  const frameIndex = useTransform(smoothProgress, [0, 1], [0, getAssetConfig(isMobile).frameCount - 1]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
