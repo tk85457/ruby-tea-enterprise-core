@@ -22,6 +22,8 @@
   /* Aliases for secondary components */
   --gold-royal: #D4AF37;
   --coffee-dark: #1C120B;
+  --bg-site: #1C120B; /* Default site background for sections */
+  --coffee-brown: #3B2416; /* For testimonial backgrounds */
 }
 
 /* Theme B: Ivory Minimal Luxury (Personality Switch) */
@@ -37,6 +39,8 @@
   --btn-text: #FAF7F2;
   --btn-text-hover: #2A1A12;
   --border-color: rgba(42, 26, 18, 0.15);
+  --bg-site: #F1ECE4; /* Slightly darker/warmer than primary for contrast */
+  --coffee-brown: #2A1A12; /* Dark espresso for ivory theme */
 }
 
 body {
