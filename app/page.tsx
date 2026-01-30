@@ -11,7 +11,8 @@ import { useState, useEffect } from 'react';
 import { Product } from '../lib/types';
 import dynamic from 'next/dynamic';
 
-import HeroSequence from '../components/HeroSequence';
+const HeroSequence = dynamic(() => import('../components/HeroSequence'), { ssr: false });
+// import HeroSequence from '../components/HeroSequence';
 import { useRef } from 'react';
 
 const containerVariants: Variants = {

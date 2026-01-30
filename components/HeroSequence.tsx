@@ -6,31 +6,39 @@ import { motion, useSpring, useMotionValue, useTransform, useScroll } from 'fram
 const frameCount = 80; // 80 frame high-res sequence
 const images: HTMLImageElement[] = [];
 
-// Preload images from the sequence directory
 // Preload images from the sequence directory with staggering to save bandwidth on initial load
-const preloadImages = (onProgress?: (count: number) => void) => {
+const preloadImages = (isMobile: boolean) => {
   if (images.length > 0) return;
 
-  // 1. Initial Priority Batch (First 15 frames for immediate visual)
-  const priorityBatch = 15;
+  // Optimized Loading Strategy:
+  // Mobile: Load every 2nd frame (40 total) to save memory/bandwidth
+  // Desktop: Load full 80 frames
+  const increment = isMobile ? 2 : 1;
+
   for (let i = 0; i < frameCount; i++) {
     const img = new Image();
     const formattedIndex = i.toString().padStart(3, '0');
-    // Only set src for the full sequence if we want to preload all,
-    // but we'll prioritize the first few.
-    if (i < priorityBatch) {
-      img.src = `/images/hero-new-sequence/Create_a_video_1080p_202601292134_${formattedIndex}.jpg`;
+
+    // On mobile, we only set src for the indices we'll actually use
+    if (!isMobile || i % increment === 0) {
+      if (i < 15) { // Priority Batch
+        img.src = `/images/hero-new-sequence/Create_a_video_1080p_202601292134_${formattedIndex}.jpg`;
+      }
     }
     images.push(img);
   }
 
-  // 2. Secondary Batch Loading (The rest)
+  // Secondary Batch Loading
   setTimeout(() => {
-    for (let i = priorityBatch; i < frameCount; i++) {
-      const formattedIndex = i.toString().padStart(3, '0');
-      images[i].src = `/images/hero-new-sequence/Create_a_video_1080p_202601292134_${formattedIndex}.jpg`;
+    for (let i = 0; i < frameCount; i++) {
+      if (!isMobile || i % increment === 0) {
+        const formattedIndex = i.toString().padStart(3, '0');
+        if (!images[i].src) {
+           images[i].src = `/images/hero-new-sequence/Create_a_video_1080p_202601292134_${formattedIndex}.jpg`;
+        }
+      }
     }
-  }, 1500); // Wait for initial render to load more
+  }, 1000);
 };
 
 interface HeroSequenceProps {
@@ -41,6 +49,7 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Scroll Progress
   const { scrollYProgress } = useScroll({
@@ -48,64 +57,25 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     offset: ["start start", "end end"]
   });
 
-  // Smooth Scroll Physics
+  // Smooth Scroll Physics - Adjusted for mobile vs desktop
   const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 200, // Responsive but smooth
-    damping: 30,
+    stiffness: isMobile ? 120 : 200,
+    damping: isMobile ? 40 : 30,
     mass: 0.5
   });
 
   // Map 0-1 scroll progress to 0-79 frame index
   const frameIndex = useTransform(smoothProgress, [0, 1], [0, frameCount - 1]);
 
-  // Create a state to trigger re-renders when the transform changes
-  const [currentFrame, setCurrentFrame] = useState(0);
-
   useEffect(() => {
-    return frameIndex.on("change", (latest) => {
-      setCurrentFrame(Math.round(latest));
-    });
-  }, [frameIndex]);
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    preloadImages(window.innerWidth < 768);
 
-  // Mouse Parallax Values
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  const glowX = useTransform(mouseX, [-0.5, 0.5], [-50, 50]);
-  const glowY = useTransform(mouseY, [-0.5, 0.5], [-50, 50]);
-
-  const packetXMove = useSpring(0, { stiffness: 100, damping: 30 });
-  const packetYMove = useSpring(0, { stiffness: 100, damping: 30 });
-  const packetScale = useSpring(1, { stiffness: 100, damping: 30 }); // Start at full scale
-
-  useEffect(() => {
-    const unsubX = mouseX.on("change", (v) => packetXMove.set(v * 40));
-    const unsubY = mouseY.on("change", (v) => packetYMove.set(v * 40));
-    return () => {
-        unsubX();
-        unsubY();
-    };
-  }, [mouseX, mouseY, packetXMove, packetYMove]);
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const { clientX, clientY } = e;
-    const { innerWidth, innerHeight } = window;
-    const x = (clientX / innerWidth) - 0.5;
-    const y = (clientY / innerHeight) - 0.5;
-    mouseX.set(x);
-    mouseY.set(y);
-    packetScale.set(1 + Math.abs(x + y) * 0.05); // Dynamic zoom starting from 1.0
-  };
-
-  useEffect(() => {
-    preloadImages();
-    // Load check logic
     const checkLoad = setInterval(() => {
-       // Check if at least first few and middle images are loaded for smoother start
        let loadedCount = 0;
-       images.forEach(img => { if(img.complete) loadedCount++; });
-
-       if (loadedCount > 10) { // Start when decent chunk is ready
+       images.forEach(img => { if(img.complete && img.src) loadedCount++; });
+       if (loadedCount > 10) {
            setIsLoaded(true);
            clearInterval(checkLoad);
        }
@@ -113,133 +83,128 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     return () => clearInterval(checkLoad);
   }, []);
 
-  // Canvas Rendering Logic
+  // Optimized Rendering Loop (RAF based)
   useEffect(() => {
     if (!isLoaded) return;
 
-    const render = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const context = canvas.getContext('2d');
-      if (!context) return;
+    let rafId: number;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext('2d', { alpha: false }); // Performance optimization
+    if (!context) return;
 
-      const idx = Math.min(frameCount - 1, Math.max(0, currentFrame));
+    const render = () => {
+      const idx = Math.round(frameIndex.get());
       const img = images[idx];
 
-      if (!img || !img.complete) return;
-
-      const dpr = window.devicePixelRatio || 1;
-      const cssWidth = window.innerWidth;
-      const cssHeight = window.innerHeight;
-
-      // Update canvas dimensions for high-DPI
-      if (canvas.width !== cssWidth * dpr || canvas.height !== cssHeight * dpr) {
-        canvas.width = cssWidth * dpr;
-        canvas.height = cssHeight * dpr;
+      // On mobile, if the specific index isn't loaded (because we skipped it),
+      // find the nearest loaded neighbor
+      let finalImg = img;
+      if (!img?.complete) {
+          // Find nearest available
+          for(let shift = 1; shift < 5; shift++) {
+              if (images[idx-shift]?.complete) { finalImg = images[idx-shift]; break; }
+              if (images[idx+shift]?.complete) { finalImg = images[idx+shift]; break; }
+          }
       }
 
-      const imgRatio = img.width / img.height;
-      const canvasRatio = cssWidth / cssHeight;
+      if (finalImg && finalImg.complete) {
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = window.innerWidth;
+        const cssHeight = window.innerHeight;
 
-      let drawWidth, drawHeight, offsetX, offsetY;
-
-      // Cinematic "Object-Fit: Cover" algorithm
-      if (canvasRatio > imgRatio) {
-          drawWidth = cssWidth;
-          drawHeight = cssWidth / imgRatio;
-      } else {
-          drawHeight = cssHeight;
-          drawWidth = cssHeight * imgRatio;
-      }
-
-      offsetX = (cssWidth - drawWidth) / 2;
-      offsetY = (cssHeight - drawHeight) / 2;
-
-      context.clearRect(0, 0, canvas.width, canvas.height);
-
-      context.save();
-      context.scale(dpr, dpr);
-
-      // Dynamic Bloom
-      if (idx > 15 && idx < 45) {
-        context.shadowBlur = 50;
-        context.shadowColor = "rgba(50, 8, 8, 0.6)";
-      } else {
-        context.shadowBlur = 0;
-      }
-
-      context.drawImage(img, Math.floor(offsetX), Math.floor(offsetY), Math.ceil(drawWidth), Math.ceil(drawHeight));
-
-      context.restore();
-    };
-
-    render();
-
-    const handleResize = () => {
-        if (canvasRef.current) {
-            const dpr = window.devicePixelRatio || 1;
-            canvasRef.current.width = window.innerWidth * dpr;
-            canvasRef.current.height = window.innerHeight * dpr;
-            render();
+        if (canvas.width !== cssWidth * dpr) {
+          canvas.width = cssWidth * dpr;
+          canvas.height = cssHeight * dpr;
         }
+
+        const imgRatio = finalImg.width / finalImg.height;
+        const canvasRatio = cssWidth / cssHeight;
+
+        let drawWidth, drawHeight, offsetX, offsetY;
+
+        if (canvasRatio > imgRatio) {
+            drawWidth = cssWidth;
+            drawHeight = cssWidth / imgRatio;
+        } else {
+            drawHeight = cssHeight;
+            drawWidth = cssHeight * imgRatio;
+        }
+
+        offsetX = (cssWidth - drawWidth) / 2;
+        offsetY = (cssHeight - drawHeight) / 2;
+
+        context.save();
+        context.scale(dpr, dpr);
+
+        // Mobile optimization: Disable shadows/blur on mobile to save GPU
+        if (!isMobile && idx > 15 && idx < 45) {
+          context.shadowBlur = 40;
+          context.shadowColor = "rgba(50, 8, 8, 0.4)";
+        }
+
+        context.drawImage(finalImg, Math.floor(offsetX), Math.floor(offsetY), Math.ceil(drawWidth), Math.ceil(drawHeight));
+        context.restore();
+      }
+
+      rafId = requestAnimationFrame(render);
     };
 
-    window.addEventListener('resize', handleResize);
+    rafId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(rafId);
+  }, [isLoaded, isMobile, frameIndex]);
 
-    return () => window.removeEventListener('resize', handleResize);
-  }, [currentFrame, isLoaded]); // Re-render when currentFrame changes
+  // Mouse Parallax (Desktop Only)
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const glowX = useTransform(mouseX, [-0.5, 0.5], [-50, 50]);
+  const glowY = useTransform(mouseY, [-0.5, 0.5], [-50, 50]);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isMobile) return;
+    const { clientX, clientY } = e;
+    const { innerWidth, innerHeight } = window;
+    mouseX.set((clientX / innerWidth) - 0.5);
+    mouseY.set((clientY / innerHeight) - 0.5);
+  };
 
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 w-screen h-dvh bg-[var(--coffee-dark)] overflow-hidden z-0 transition-[height] duration-300"
+      className="fixed inset-0 w-screen h-dvh bg-[#0a0505] overflow-hidden z-0"
       onMouseMove={handleMouseMove}
     >
       <div className="absolute inset-0 h-full w-full overflow-hidden">
-        {/* Background Decorative Glow */}
-        <motion.div
-          style={{
-            x: glowX,
-            y: glowY,
-            scale: 1.5
-          }}
-          className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none"
-        >
-          <div className="w-[80vw] h-[80vw] rounded-full bg-gradient-radial from-[var(--reddish-brown)]/20 to-transparent blur-[120px]" />
-        </motion.div>
+        {/* Decorative Glow */}
+        {!isMobile && (
+          <motion.div
+            style={{ x: glowX, y: glowY, scale: 1.5 }}
+            className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none"
+          >
+            <div className="w-[80vw] h-[80vw] rounded-full bg-gradient-radial from-[#3d1111]/20 to-transparent blur-[120px]" />
+          </motion.div>
+        )}
 
-        {/* Main Canvas Context */}
-        <motion.div
-          style={{
-            x: packetXMove,
-            y: packetYMove,
-            scale: packetScale
-          }}
-          className="w-full h-full flex items-center justify-center z-20 pointer-events-none"
-        >
+        {/* Main Canvas */}
+        <div className="w-full h-full flex items-center justify-center z-20 pointer-events-none">
           <canvas
             ref={canvasRef}
             className="w-full h-full"
           />
-        </motion.div>
+        </div>
 
         {!isLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center z-50 bg-[var(--deep-bg)]">
+          <div className="absolute inset-0 flex items-center justify-center z-50 bg-[#0a0505]">
               <div className="text-center">
-                  <div className="w-16 h-16 border-4 border-[var(--reddish-brown)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-xl font-serif text-[var(--reddish-brown)]">Mastering the blend...</p>
+                  <div className="w-12 h-12 border-2 border-[var(--accent-hover)] border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+                  <p className="text-sm uppercase tracking-[0.4em] text-[var(--accent-hover)] font-bold opacity-60">Mastering the Blend</p>
               </div>
           </div>
         )}
 
-        {/* Scroll Indicator hint */}
-        <div className="absolute bottom-12 left-0 right-0 z-40 text-center pointer-events-none animate-bounce opacity-50">
-           <svg className="w-6 h-6 mx-auto text-[var(--accent-hover)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-           </svg>
-        </div>
-
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[var(--deep-bg)]/80 to-transparent z-30 pointer-events-none" />
+        {/* Cinematic Vignette */}
+        <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-black/40 pointer-events-none z-30" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0a0505] to-transparent z-40 pointer-events-none" />
       </div>
     </div>
   );
