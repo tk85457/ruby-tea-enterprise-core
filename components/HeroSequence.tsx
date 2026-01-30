@@ -12,34 +12,34 @@ const getAssetConfig = (isMobile: boolean) => ({
   path: '/images/hero-sequence/',
   prefix: 'Create_a_video_1080p_202601292134_',
   frameCount: 80,
-  increment: 1
+  increment: isMobile ? 2 : 1 // Optimize: Skip every other frame on mobile
 });
 
 const preloadImages = (isMobile: boolean) => {
   if (images.length > 0) return;
   const config = getAssetConfig(isMobile);
 
-  for (let i = 0; i < config.frameCount; i++) {
+  for (let i = 0; i < config.frameCount; i += config.increment) {
     const img = new Image();
     const formattedIndex = i.toString().padStart(3, '0');
 
     // Priority: Only set SRC for frames we will actually render
-    if (!isMobile || i % config.increment === 0) {
-      if (i < 12) { // Immediate Priority Batch
-        img.src = `${config.path}${config.prefix}${formattedIndex}.webp`;
-      }
+    if (i < 12 * config.increment) { // Immediate Priority Batch
+      img.src = `${config.path}${config.prefix}${formattedIndex}.webp`;
     }
-    images.push(img);
+
+    // Store at the correct index, leaving gaps for skipped frames to maintain timeline sync
+    images[i] = img;
   }
 
   // Secondary Batch
   setTimeout(() => {
-    for (let i = 0; i < config.frameCount; i++) {
-        if (!isMobile || i % config.increment === 0) {
-            if (!images[i].src) {
-                const formattedIndex = i.toString().padStart(3, '0');
-                images[i].src = `${config.path}${config.prefix}${formattedIndex}.webp`;
-            }
+    for (let i = 0; i < config.frameCount; i += config.increment) {
+        if (!images[i]?.src) {
+             const formattedIndex = i.toString().padStart(3, '0');
+             // Ensure valid object exists before assignment
+             if(!images[i]) images[i] = new Image();
+             images[i].src = `${config.path}${config.prefix}${formattedIndex}.webp`;
         }
     }
   }, 800);
@@ -99,16 +99,21 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
 
     const render = () => {
       const idx = Math.round(frameIndex.get());
-      const img = images[idx];
+
+      // Snap to nearest available frame increment on mobile to avoid blurry 'tween' states or missing frames
+      const config = getAssetConfig(isMobile);
+      const snappedIdx = isMobile ? Math.round(idx / config.increment) * config.increment : idx;
+
+      const img = images[snappedIdx];
 
       // On mobile, if the specific index isn't loaded (because we skipped it),
       // find the nearest loaded neighbor
       let finalImg = img;
       if (!img?.complete) {
           // Find nearest available
-          for(let shift = 1; shift < 5; shift++) {
-              if (images[idx-shift]?.complete) { finalImg = images[idx-shift]; break; }
-              if (images[idx+shift]?.complete) { finalImg = images[idx+shift]; break; }
+          for(let shift = config.increment; shift < 5 * config.increment; shift += config.increment) {
+              if (images[snappedIdx-shift]?.complete) { finalImg = images[snappedIdx-shift]; break; }
+              if (images[snappedIdx+shift]?.complete) { finalImg = images[snappedIdx+shift]; break; }
           }
       }
 

@@ -32,7 +32,7 @@ const itemVariants: Variants = {
     y: 0,
     opacity: 1,
     transition: {
-      duration: 1.2,
+      duration: 0.8, // Reduced from 1.2 for snappier mobile feel
       ease: [0.16, 1, 0.3, 1] // Luxury Easing
     }
   }
@@ -205,7 +205,7 @@ export default function Home() {
                 key={product._id || product.id || `product-${idx}`}
                 variants={itemVariants}
                 whileHover={{ y: -4 }}
-                className="group cursor-pointer relative"
+                className="group cursor-pointer relative gpu-optimized"
               >
                 <Link href={`/products/${product.slug || product._id}`} className="absolute inset-0 z-10" aria-label={`View ${product.name}`} />
                 <div className="relative aspect-[4/5] overflow-hidden rounded-[2.5rem] bg-[var(--bg-card)] mb-10 border border-[var(--border-color)]">
@@ -215,7 +215,7 @@ export default function Home() {
                       alt={product.name}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover opacity-80 group-hover:opacity-100 transition-all duration-1000 group-hover:scale-105"
+                      className="object-cover opacity-80 group-hover:opacity-100 transition-all duration-1000 group-hover:scale-105 will-change-transform"
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-[var(--text-heading)]/10 font-serif italic text-4xl">RUBY</div>
