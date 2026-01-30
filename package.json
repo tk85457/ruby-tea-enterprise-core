@@ -1,0 +1,48 @@
+{
+  "name": "ruby-tea",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@sentry/nextjs": "^10.38.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/three": "^0.182.0",
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.9.0",
+    "framer-motion": "^12.23.26",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.0.0",
+    "mongoose": "^9.0.2",
+    "next": "^16.1.6",
+    "next-auth": "^5.0.0-beta.30",
+    "pusher": "^5.3.2",
+    "pusher-js": "^8.4.0",
+    "razorpay": "^2.9.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-hot-toast": "^2.6.0",
+    "react-icons": "^5.5.0",
+    "react-just-parallax": "^3.1.16",
+    "recharts": "^3.7.0",
+    "swr": "^2.3.8",
+    "three": "^0.182.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.1",
+    "tailwindcss": "^4.0.0-alpha.34",
+    "typescript": "^5"
+  }
+}
