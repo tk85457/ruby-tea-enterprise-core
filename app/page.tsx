@@ -79,47 +79,16 @@ export default function Home() {
           {/* Background Animation */}
           <HeroSequence scrollRef={heroRef} />
 
-          {/* Premium Overlays */}
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center text-center px-4 pointer-events-none">
-            <motion.div
-              style={{
-                opacity: headlineOpacity,
-                y: headlineY,
-                scale: headlineScale
-              }}
-              className="max-w-4xl"
-            >
-              <span className="text-[var(--accent-hover)] uppercase tracking-[0.4em] font-bold text-xs mb-6 block drop-shadow-lg">
-                Established 1974
-              </span>
-              <h1 className="text-6xl md:text-8xl font-bold font-serif text-[var(--text-heading)] mb-8 leading-tight drop-shadow-2xl">
-                The Essence <br /> of Royalty
-              </h1>
-            </motion.div>
-
-            <motion.div
-              style={{
-                opacity: ctaOpacity,
-                y: ctaY
-              }}
-              className="pointer-events-auto"
-            >
-              <p className="text-lg md:text-xl text-[var(--text-body)]/60 mb-12 max-w-xl mx-auto font-serif italic drop-shadow-lg">
-                Experience the rhythmic depth of pure, slow-processed Indian heritage tea.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-8 justify-center items-center">
-                <Link href="/products">
-                  <button className="btn-primary px-12 py-5 text-sm shadow-2xl">
-                    Explore Collection
-                  </button>
-                </Link>
-                <Link href="/contact">
-                  <button className="text-[var(--text-body)]/40 hover:text-[var(--accent-hover)] transition-colors uppercase tracking-widest text-[10px] font-bold border-b border-transparent hover:border-[var(--accent-hover)] pb-1">
-                    Our Legacy
-                  </button>
-                </Link>
-              </div>
-            </motion.div>
+          {/* Cinematic Focal Point - Overlay Content Removed for Visual Purity */}
+          <div className="absolute inset-0 z-50 pointer-events-none flex items-end justify-center pb-24">
+             <motion.div
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 0.4 }}
+               transition={{ duration: 2, delay: 1 }}
+               className="text-[var(--accent-hover)] text-[8px] uppercase tracking-[0.6em] font-bold"
+             >
+               Pure. Rhythmic. Royal.
+             </motion.div>
           </div>
 
           {/* Luxury Aesthetics */}
