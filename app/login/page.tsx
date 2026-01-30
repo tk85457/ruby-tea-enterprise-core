@@ -13,7 +13,11 @@ export default function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET || 'RUBY_SECRET_123';
+    const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET;
+    if (!ADMIN_SECRET) {
+      setError('System configuration error: ADMIN_SECRET missing');
+      return;
+    }
 
     if (key === ADMIN_SECRET) {
       localStorage.setItem('ruby_tea_admin_key', key);

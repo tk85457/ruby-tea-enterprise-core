@@ -13,9 +13,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     // In production, use a real auth provider or secure cookie check
     const checkAuth = () => {
       const secretKey = localStorage.getItem('ruby_tea_admin_key');
-      const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET || 'RUBY_SECRET_123';
+      const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET;
 
-      if (secretKey === ADMIN_SECRET) {
+      if (ADMIN_SECRET && secretKey === ADMIN_SECRET) {
         setIsAuthenticated(true);
       } else {
         router.push('/login');
