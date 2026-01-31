@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://rubytea.in';
+  // Ensure baseUrl doesn't have a trailing slash
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://rubytea.in').replace(/\/$/, '');
 
   // In a real enterprise app, fetch these from DB
   const dynamicRoutes = [
