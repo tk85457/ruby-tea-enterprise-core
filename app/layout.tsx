@@ -12,6 +12,9 @@ export const metadata = {
   alternates: {
     canonical: 'https://rubytea.in',
   },
+  verification: {
+    google: '9PH0IxZrRzy2tzzSp0DWgjlhVlFNes6WwvaH6xL_A3w',
+  },
 };
 
 const orgSchema = {
