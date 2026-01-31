@@ -3,46 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useSpring, useMotionValue, useTransform, useScroll } from 'framer-motion';
 
-const frameCount = 80; // 80 frame high-res sequence
-const images: HTMLImageElement[] = [];
-
-// Preload images from the sequence directory with staggering to save bandwidth on initial load
 const getAssetConfig = (isMobile: boolean) => ({
-  // Using the high-fidelity sequence for all devices as requested
   path: '/images/hero-sequence/',
   prefix: 'Create_a_video_1080p_202601292134_',
   frameCount: 80,
-  increment: 1 // RESTORED: Full 80 frames for "pura" smoothness
+  increment: 1
 });
-
-const preloadImages = (isMobile: boolean) => {
-  if (images.length > 0) return;
-  const config = getAssetConfig(isMobile);
-
-  for (let i = 0; i < config.frameCount; i++) {
-    const img = new Image();
-    const formattedIndex = i.toString().padStart(3, '0');
-
-    // Priority 1: First 25 frames (Instant Start)
-    if (i < 25) {
-      img.src = `${config.path}${config.prefix}${formattedIndex}.webp`;
-    }
-
-    // Store in array
-    images[i] = img;
-  }
-
-  // Priority 2: Remaining frames (Background load)
-  setTimeout(() => {
-    for (let i = 25; i < config.frameCount; i++) {
-        if (!images[i]?.src) {
-             const formattedIndex = i.toString().padStart(3, '0');
-             if(!images[i]) images[i] = new Image();
-             images[i].src = `${config.path}${config.prefix}${formattedIndex}.webp`;
-        }
-    }
-  }, 100); // Start sooner (100ms vs 800ms) for "jaldi load"
-};
 
 interface HeroSequenceProps {
   scrollRef: React.RefObject<HTMLElement | null>;
@@ -51,8 +17,10 @@ interface HeroSequenceProps {
 export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const imagesRef = useRef<HTMLImageElement[]>([]); // 🟠 2. Memory Safety: Global array removed
   const [isLoaded, setIsLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const lastRenderedIndex = useRef<number>(-1); // 🟢 4. Optimization: Track last frame
 
   // Scroll Progress
   const { scrollYProgress } = useScroll({
@@ -60,116 +28,140 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     offset: ["start start", "end end"]
   });
 
-  // Smooth Scroll Physics - Adjusted for mobile vs desktop
+  // Smooth Scroll Physics
   const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: isMobile ? 150 : 200, // Slightly tighter on mobile for responsiveness
+    stiffness: isMobile ? 150 : 200,
     damping: isMobile ? 35 : 30,
     mass: 0.5
   });
 
-  // Map 0-1 scroll progress to 0-frame index
+  // 🟡 3. Dynamic Frame Range: Hardcoding removed, now safe for config changes
   const frameIndex = useTransform(smoothProgress, [0, 1], [0, getAssetConfig(isMobile).frameCount - 1]);
 
+  // Initialization & Preload
   useEffect(() => {
     const handleResize = () => {
         setIsMobile(window.innerWidth < 768);
     };
+    handleResize(); // Initial check
+    window.addEventListener('resize', handleResize); // 🟣 5. Resize Listener
 
-    // Initial check
-    handleResize();
+    const config = getAssetConfig(window.innerWidth < 768);
+    let loadedCount = 0;
+    const totalImages = config.frameCount;
 
-    // Add listener
-    window.addEventListener('resize', handleResize);
+    // Initialize array if empty
+    if (imagesRef.current.length === 0) {
+        for (let i = 0; i < totalImages; i++) {
+            const img = new Image();
+            const formattedIndex = i.toString().padStart(3, '0');
 
-    // Trigger preload
-    preloadImages(window.innerWidth < 768);
+            // 🟡 3. Efficient Load Checker: Use onload for critical frames
+            img.onload = () => {
+                loadedCount++;
+                // 🟡 2. Edge Case Fix: Ensure first frame is strictly loaded to avoid blank flash
+                if (i === 0) setIsLoaded(true);
+            };
 
-    const checkLoad = setInterval(() => {
-       let loadedCount = 0;
-       images.forEach(img => { if(img && img.complete && img.src) loadedCount++; });
-       if (loadedCount > 5) {
-           setIsLoaded(true);
-           clearInterval(checkLoad);
-       }
-    }, 50);
+            // Priority Loading Strategy
+            if (i < 25) {
+                img.src = `${config.path}${config.prefix}${formattedIndex}.webp`;
+            }
+            imagesRef.current[i] = img;
+        }
+
+        // Lazy load the rest
+        setTimeout(() => {
+             for (let i = 25; i < totalImages; i++) {
+                 const img = imagesRef.current[i];
+                 if (img && !img.src) {
+                    const formattedIndex = i.toString().padStart(3, '0');
+                    img.src = `${config.path}${config.prefix}${formattedIndex}.webp`;
+                 }
+             }
+        }, 100);
+    } else {
+        // If already populated (hot reload/remount), check readiness
+        if(imagesRef.current.some(img => img.complete)) {
+            setIsLoaded(true);
+        }
+    }
 
     return () => {
         window.removeEventListener('resize', handleResize);
-        clearInterval(checkLoad);
     };
   }, []);
 
-  // Optimized Rendering Loop (RAF based)
+  // Optimized Render Loop
   useEffect(() => {
     if (!isLoaded) return;
 
     let rafId: number;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const context = canvas.getContext('2d', { alpha: false }); // Performance optimization
+
+    // 🟡 6. Mobile Optimization: Lower quality for pure performance if needed
+    // But 'medium' is a good balance.
+    const context = canvas.getContext('2d', { alpha: false });
     if (!context) return;
 
-    // Smooth scaling
     context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = 'medium'; // Balance quality/perf
+    context.imageSmoothingQuality = isMobile ? 'low' : 'medium';
 
     const render = () => {
       const idx = Math.round(frameIndex.get());
-      const img = images[idx];
 
-      let finalImg = img;
-      // Fallback to nearest neighbor if frame not loaded yet
-      if (!img?.complete) {
-          for(let shift = 1; shift < 10; shift++) {
-              if (images[idx-shift]?.complete) { finalImg = images[idx-shift]; break; }
-              if (images[idx+shift]?.complete) { finalImg = images[idx+shift]; break; }
-          }
-      }
+      // 🟢 4. Render only on change
+      if (idx !== lastRenderedIndex.current) {
+        lastRenderedIndex.current = idx;
 
-      if (finalImg && finalImg.complete) {
-        // PERFORMANCE: Cap PixelRatio on mobile to save GPU bandwidth.
-        // High-end phones have DPR=3 (rendering 3x pixels).
-        // 1.5 is enough for a smooth "video" feel without melting the GPU.
-        const maxDpr = isMobile ? 1.5 : (window.devicePixelRatio || 1);
-        const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+        const img = imagesRef.current[idx];
 
-        const cssWidth = window.innerWidth;
-        const cssHeight = window.innerHeight;
-
-        if (canvas.width !== cssWidth * dpr) {
-          canvas.width = cssWidth * dpr;
-          canvas.height = cssHeight * dpr;
-          context.scale(dpr, dpr); // Reset scale when resizing
-        } else {
-             // Reset transform for this frame
-             context.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // Fallback search
+        let finalImg = img;
+        if (!img?.complete) {
+            for(let shift = 1; shift < 5; shift++) {
+                if (imagesRef.current[idx-shift]?.complete) { finalImg = imagesRef.current[idx-shift]; break; }
+                if (imagesRef.current[idx+shift]?.complete) { finalImg = imagesRef.current[idx+shift]; break; }
+            }
         }
 
-        const imgRatio = finalImg.width / finalImg.height;
-        const canvasRatio = cssWidth / cssHeight;
+        if (finalImg && finalImg.complete) {
+            // 🗺️ Dimensions & Scaling
+            const maxDpr = isMobile ? 1.5 : (window.devicePixelRatio || 1);
+            const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+            const cssWidth = window.innerWidth;
+            const cssHeight = window.innerHeight;
 
-        let drawWidth, drawHeight, offsetX, offsetY;
+            // 🔴 1. Fix: Handle Resize & Scale Correctly using setTransform
+            if (canvas.width !== cssWidth * dpr || canvas.height !== cssHeight * dpr) {
+                canvas.width = cssWidth * dpr;
+                canvas.height = cssHeight * dpr;
+            }
 
-        if (canvasRatio > imgRatio) {
-            drawWidth = cssWidth;
-            drawHeight = cssWidth / imgRatio;
-        } else {
-            drawHeight = cssHeight;
-            drawWidth = cssHeight * imgRatio;
+            // Reset transform to identity * DPR, effectively replacing context.scale(dpr, dpr)
+            context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            // Calculation
+            const imgRatio = finalImg.width / finalImg.height;
+            const canvasRatio = cssWidth / cssHeight;
+            let drawWidth, drawHeight, offsetX, offsetY;
+
+            if (canvasRatio > imgRatio) {
+                drawWidth = cssWidth;
+                drawHeight = cssWidth / imgRatio;
+            } else {
+                drawHeight = cssHeight;
+                drawWidth = cssHeight * imgRatio;
+            }
+
+            offsetX = (cssWidth - drawWidth) / 2;
+            offsetY = (cssHeight - drawHeight) / 2;
+
+            // Clear & Draw
+            context.clearRect(0, 0, cssWidth, cssHeight); // Clear logic uses CSS units because of setTransform
+            context.drawImage(finalImg, Math.round(offsetX), Math.round(offsetY), Math.ceil(drawWidth), Math.ceil(drawHeight));
         }
-
-        offsetX = (cssWidth - drawWidth) / 2;
-        offsetY = (cssHeight - drawHeight) / 2;
-
-        // Clear canvas to prevent ghosting or trails
-        context.clearRect(0, 0, canvas.width, canvas.height);
-
-        context.save();
-        context.scale(dpr, dpr);
-
-        // Draw image effectively centered
-        context.drawImage(finalImg, Math.round(offsetX), Math.round(offsetY), Math.ceil(drawWidth), Math.ceil(drawHeight));
-        context.restore();
       }
 
       rafId = requestAnimationFrame(render);
