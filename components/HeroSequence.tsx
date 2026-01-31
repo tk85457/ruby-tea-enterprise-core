@@ -12,37 +12,36 @@ const getAssetConfig = (isMobile: boolean) => ({
   path: '/images/hero-sequence/',
   prefix: 'Create_a_video_1080p_202601292134_',
   frameCount: 80,
-  increment: isMobile ? 2 : 1 // Optimize: Skip every other frame on mobile
+  increment: 1 // RESTORED: Full 80 frames for "pura" smoothness
 });
 
 const preloadImages = (isMobile: boolean) => {
   if (images.length > 0) return;
   const config = getAssetConfig(isMobile);
 
-  for (let i = 0; i < config.frameCount; i += config.increment) {
+  for (let i = 0; i < config.frameCount; i++) {
     const img = new Image();
     const formattedIndex = i.toString().padStart(3, '0');
 
-    // Priority: Only set SRC for frames we will actually render
-    if (i < 12 * config.increment) { // Immediate Priority Batch
+    // Priority 1: First 25 frames (Instant Start)
+    if (i < 25) {
       img.src = `${config.path}${config.prefix}${formattedIndex}.webp`;
     }
 
-    // Store at the correct index, leaving gaps for skipped frames to maintain timeline sync
+    // Store in array
     images[i] = img;
   }
 
-  // Secondary Batch
+  // Priority 2: Remaining frames (Background load)
   setTimeout(() => {
-    for (let i = 0; i < config.frameCount; i += config.increment) {
+    for (let i = 25; i < config.frameCount; i++) {
         if (!images[i]?.src) {
              const formattedIndex = i.toString().padStart(3, '0');
-             // Ensure valid object exists before assignment
              if(!images[i]) images[i] = new Image();
              images[i].src = `${config.path}${config.prefix}${formattedIndex}.webp`;
         }
     }
-  }, 800);
+  }, 100); // Start sooner (100ms vs 800ms) for "jaldi load"
 };
 
 interface HeroSequenceProps {
@@ -63,8 +62,8 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
 
   // Smooth Scroll Physics - Adjusted for mobile vs desktop
   const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: isMobile ? 120 : 200,
-    damping: isMobile ? 40 : 30,
+    stiffness: isMobile ? 150 : 200, // Slightly tighter on mobile for responsiveness
+    damping: isMobile ? 35 : 30,
     mass: 0.5
   });
 
@@ -79,11 +78,12 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     const checkLoad = setInterval(() => {
        let loadedCount = 0;
        images.forEach(img => { if(img.complete && img.src) loadedCount++; });
-       if (loadedCount > 10) {
+       // Show as "loaded" as soon as we have the first chunk ready
+       if (loadedCount > 5) {
            setIsLoaded(true);
            clearInterval(checkLoad);
        }
-    }, 100);
+    }, 50);
     return () => clearInterval(checkLoad);
   }, []);
 
@@ -97,34 +97,40 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     const context = canvas.getContext('2d', { alpha: false }); // Performance optimization
     if (!context) return;
 
+    // Smooth scaling
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'medium'; // Balance quality/perf
+
     const render = () => {
       const idx = Math.round(frameIndex.get());
+      const img = images[idx];
 
-      // Snap to nearest available frame increment on mobile to avoid blurry 'tween' states or missing frames
-      const config = getAssetConfig(isMobile);
-      const snappedIdx = isMobile ? Math.round(idx / config.increment) * config.increment : idx;
-
-      const img = images[snappedIdx];
-
-      // On mobile, if the specific index isn't loaded (because we skipped it),
-      // find the nearest loaded neighbor
       let finalImg = img;
+      // Fallback to nearest neighbor if frame not loaded yet
       if (!img?.complete) {
-          // Find nearest available
-          for(let shift = config.increment; shift < 5 * config.increment; shift += config.increment) {
-              if (images[snappedIdx-shift]?.complete) { finalImg = images[snappedIdx-shift]; break; }
-              if (images[snappedIdx+shift]?.complete) { finalImg = images[snappedIdx+shift]; break; }
+          for(let shift = 1; shift < 10; shift++) {
+              if (images[idx-shift]?.complete) { finalImg = images[idx-shift]; break; }
+              if (images[idx+shift]?.complete) { finalImg = images[idx+shift]; break; }
           }
       }
 
       if (finalImg && finalImg.complete) {
-        const dpr = window.devicePixelRatio || 1;
+        // PERFORMANCE: Cap PixelRatio on mobile to save GPU bandwidth.
+        // High-end phones have DPR=3 (rendering 3x pixels).
+        // 1.5 is enough for a smooth "video" feel without melting the GPU.
+        const maxDpr = isMobile ? 1.5 : (window.devicePixelRatio || 1);
+        const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+
         const cssWidth = window.innerWidth;
         const cssHeight = window.innerHeight;
 
         if (canvas.width !== cssWidth * dpr) {
           canvas.width = cssWidth * dpr;
           canvas.height = cssHeight * dpr;
+          context.scale(dpr, dpr); // Reset scale when resizing
+        } else {
+             // Reset transform for this frame
+             context.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
 
         const imgRatio = finalImg.width / finalImg.height;
@@ -147,10 +153,10 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
         context.scale(dpr, dpr);
 
         // Mobile optimization: Disable shadows/blur on mobile to save GPU
-        if (!isMobile && idx > 15 && idx < 45) {
-          context.shadowBlur = 40;
-          context.shadowColor = "rgba(50, 8, 8, 0.4)";
-        }
+        // if (!isMobile && idx > 15 && idx < 45) {
+        //   context.shadowBlur = 40;
+        //   context.shadowColor = "rgba(50, 8, 8, 0.4)";
+        // }
 
         context.drawImage(finalImg, Math.floor(offsetX), Math.floor(offsetY), Math.ceil(drawWidth), Math.ceil(drawHeight));
         context.restore();
