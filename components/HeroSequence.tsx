@@ -35,8 +35,9 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     mass: 0.5
   });
 
-  // 🟡 3. Dynamic Frame Range: Hardcoding removed, now safe for config changes
-  const frameIndex = useTransform(smoothProgress, [0, 1], [0, getAssetConfig(isMobile).frameCount - 1]);
+  // 🟡 3. Dynamic Frame Range: Config extracted for cleaner architecture
+  const config = getAssetConfig(isMobile);
+  const frameIndex = useTransform(smoothProgress, [0, 1], [0, config.frameCount - 1]);
 
   // Initialization & Preload
   useEffect(() => {
@@ -46,9 +47,10 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     handleResize(); // Initial check
     window.addEventListener('resize', handleResize); // 🟣 5. Resize Listener
 
-    const config = getAssetConfig(window.innerWidth < 768);
+    // Use local config for effect to ensure freshness
+    const effectConfig = getAssetConfig(window.innerWidth < 768);
     let loadedCount = 0;
-    const totalImages = config.frameCount;
+    const totalImages = effectConfig.frameCount;
 
     // Initialize array if empty
     if (imagesRef.current.length === 0) {
@@ -59,13 +61,13 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
             // 🟡 3. Efficient Load Checker: Use onload for critical frames
             img.onload = () => {
                 loadedCount++;
-                // 🟡 2. Edge Case Fix: Ensure first frame is strictly loaded to avoid blank flash
-                if (i === 0) setIsLoaded(true);
+                // 🟡 2. Edge Case Fix: Start if frame 0 OR 1 is loaded (Safer)
+                if (i <= 1) setIsLoaded(true);
             };
 
             // Priority Loading Strategy
             if (i < 25) {
-                img.src = `${config.path}${config.prefix}${formattedIndex}.webp`;
+                img.src = `${effectConfig.path}${effectConfig.prefix}${formattedIndex}.webp`;
             }
             imagesRef.current[i] = img;
         }
@@ -76,7 +78,7 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
                  const img = imagesRef.current[i];
                  if (img && !img.src) {
                     const formattedIndex = i.toString().padStart(3, '0');
-                    img.src = `${config.path}${config.prefix}${formattedIndex}.webp`;
+                    img.src = `${effectConfig.path}${effectConfig.prefix}${formattedIndex}.webp`;
                  }
              }
         }, 100);
