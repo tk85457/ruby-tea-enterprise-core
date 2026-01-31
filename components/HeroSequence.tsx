@@ -71,20 +71,32 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
   const frameIndex = useTransform(smoothProgress, [0, 1], [0, getAssetConfig(isMobile).frameCount - 1]);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
+    const handleResize = () => {
+        setIsMobile(window.innerWidth < 768);
+    };
+
+    // Initial check
+    handleResize();
+
+    // Add listener
+    window.addEventListener('resize', handleResize);
+
+    // Trigger preload
     preloadImages(window.innerWidth < 768);
 
     const checkLoad = setInterval(() => {
        let loadedCount = 0;
-       images.forEach(img => { if(img.complete && img.src) loadedCount++; });
-       // Show as "loaded" as soon as we have the first chunk ready
+       images.forEach(img => { if(img && img.complete && img.src) loadedCount++; });
        if (loadedCount > 5) {
            setIsLoaded(true);
            clearInterval(checkLoad);
        }
     }, 50);
-    return () => clearInterval(checkLoad);
+
+    return () => {
+        window.removeEventListener('resize', handleResize);
+        clearInterval(checkLoad);
+    };
   }, []);
 
   // Optimized Rendering Loop (RAF based)
@@ -149,16 +161,14 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
         offsetX = (cssWidth - drawWidth) / 2;
         offsetY = (cssHeight - drawHeight) / 2;
 
+        // Clear canvas to prevent ghosting or trails
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
         context.save();
         context.scale(dpr, dpr);
 
-        // Mobile optimization: Disable shadows/blur on mobile to save GPU
-        // if (!isMobile && idx > 15 && idx < 45) {
-        //   context.shadowBlur = 40;
-        //   context.shadowColor = "rgba(50, 8, 8, 0.4)";
-        // }
-
-        context.drawImage(finalImg, Math.floor(offsetX), Math.floor(offsetY), Math.ceil(drawWidth), Math.ceil(drawHeight));
+        // Draw image effectively centered
+        context.drawImage(finalImg, Math.round(offsetX), Math.round(offsetY), Math.ceil(drawWidth), Math.ceil(drawHeight));
         context.restore();
       }
 
