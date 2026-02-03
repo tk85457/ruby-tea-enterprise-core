@@ -230,9 +230,8 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
           <div className="absolute inset-0 flex items-center justify-center z-50 bg-[#0a0505]">
               <div className="text-center">
                   <div className="w-12 h-12 border-2 border-[var(--accent-hover)] border-t-transparent rounded-full animate-spin mx-auto mb-6" />
-                  {/* 🟢 PROGRESS DISPLAY */}
                   <p className="text-sm uppercase tracking-[0.4em] text-[var(--accent-hover)] font-bold opacity-60">
-                      Loading {loadingProgress}%
+                      Mastering the Blend
                   </p>
               </div>
           </div>
