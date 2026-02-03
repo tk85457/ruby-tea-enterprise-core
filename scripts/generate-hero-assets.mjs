@@ -11,9 +11,9 @@ const SOURCE_DIR = path.join(__dirname, '../public/images/hero-sequence');
 const OUTPUT_BASE = path.join(__dirname, '../public/images/hero-sequence');
 
 const VARIANTS = [
-  { name: 'mobile-small', width: 480, quality: 70 }, // 480px width, efficient
-  { name: 'mobile-large', width: 768, quality: 75 }, // 768px width
-  { name: 'tablet', width: 1024, quality: 80 },      // 1024px width
+  { name: 'mobile-small', width: 1080, quality: 85 }, // Upscaled for Portrait Cover (was 480, too blurry)
+  { name: 'mobile-large', width: 1280, quality: 85 }, // High-Res Mobile (was 768)
+  { name: 'tablet', width: 1600, quality: 85 },       // Sharp Tablet
   // 'desktop' uses the original source files
 ];
 
