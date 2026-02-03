@@ -14,20 +14,11 @@ interface AssetConfig {
   frameCount: number;
 }
 
-const getDeviceType = (width: number): DeviceType => {
-  if (width <= 480) return 'mobile-small';
-  if (width <= 768) return 'mobile-large';
-  if (width <= 1024) return 'video'; // Tablet uses 'video' folder OR 'tablet' depending on generation?
-  // Wait, my script generated 'tablet'. Let's match the script.
-  return 'desktop';
-};
-
 // CORRECTED SCRIPT MAPPING:
 // Script generated: 'mobile-small', 'mobile-large', 'tablet'
 // Desktop is root.
 
 const getAssetConfig = (width: number): AssetConfig => {
-  const basePrefix = 'Create_a_video_1080p_202601292134_';
   // Desktop Default
   let path = '/images/hero-sequence/';
 
@@ -41,7 +32,7 @@ const getAssetConfig = (width: number): AssetConfig => {
 
   return {
     path,
-    frameCount: 80 // All variants have 80 frames now
+    frameCount: 80 // All variants have 80 frames
   };
 };
 
@@ -53,8 +44,10 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imagesRef = useRef<HTMLImageElement[]>([]);
+
   const [isLoaded, setIsLoaded] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(0); // Track width for re-renders
+  const [loadingProgress, setLoadingProgress] = useState(0); // 🟢 Progress State
+  const [windowWidth, setWindowWidth] = useState(0);
   const lastRenderedIndex = useRef<number>(-1);
 
   // ---------------------------------------------------------------------------
@@ -76,7 +69,7 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
   const frameIndex = useTransform(smoothProgress, [0, 1], [0, 79]);
 
   // ---------------------------------------------------------------------------
-  // 🚀 INIT & PRELOADER
+  // 🚀 INIT & PRELOADER (STRICT BLOCKING)
   // ---------------------------------------------------------------------------
   useEffect(() => {
     // 1. Initial Config
@@ -85,49 +78,45 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
     const config = getAssetConfig(width);
     const prefix = 'Create_a_video_1080p_202601292134_';
 
-    // Reset if needed (though usually we stick to one set per session to avoid complexity)
+    // Reset if needed
     if (imagesRef.current.length === 0) {
       let loadedCount = 0;
+      const totalToLoad = config.frameCount;
 
+      // 🟢 Tracker Function
+      const checkLoadStatus = () => {
+          loadedCount++;
+          // Update Progress
+          const progress = Math.round((loadedCount / totalToLoad) * 100);
+          setLoadingProgress(progress);
+
+          // 🔴 STRICT: Wait for ALL images (or at least 98% to be safe against 1-2 fails)
+          // Using totalToLoad - 1 to be slightly lenient against one broken pipe
+          if (loadedCount >= totalToLoad) {
+              setIsLoaded(true);
+          }
+      };
+
+      // Trigger ALL loads immediately for maximum throughput
+      // Browser will manage the queue/simultaneous connections
       for (let i = 0; i < config.frameCount; i++) {
         const img = new Image();
         const formattedIndex = i.toString().padStart(3, '0');
         const src = `${config.path}${prefix}${formattedIndex}.webp`;
 
-        img.onload = () => {
-          loadedCount++;
-          if (i <= 1) setIsLoaded(true); // Show ASAP
-        };
+        img.onload = checkLoadStatus;
+        img.onerror = checkLoadStatus; // Count errors too so we don't hang forever
 
-        // Tier 1: Immediate
-        if (i < 15) {
-           img.src = src;
-        }
-
+        img.src = src;
         imagesRef.current[i] = img;
       }
-
-      // Tier 2: High Priority
-      setTimeout(() => {
-        for (let i = 15; i < 40; i++) {
-            const img = imagesRef.current[i];
-            if (img && !img.src) img.src = `${config.path}${prefix}${i.toString().padStart(3, '0')}.webp`;
-        }
-      }, 200);
-
-      // Tier 3: Idle
-      setTimeout(() => {
-         const loadRest = () => {
-             for (let i = 40; i < config.frameCount; i++) {
-                 const img = imagesRef.current[i];
-                 if (img && !img.src) img.src = `${config.path}${prefix}${i.toString().padStart(3, '0')}.webp`;
-             }
-         };
-         if ('requestIdleCallback' in window) (window as any).requestIdleCallback(loadRest);
-         else setTimeout(loadRest, 100);
-      }, 600);
     } else {
-        if(imagesRef.current[0]?.complete) setIsLoaded(true);
+        // Hot Reload check: If partial data exists, assume loaded or re-trigger?
+        // Safest to just mark loaded if first few exist
+        if(imagesRef.current[0]?.complete) {
+            setLoadingProgress(100);
+            setIsLoaded(true);
+        }
     }
 
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -163,12 +152,10 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
 
       const idx = Math.round(frameIndex.get());
 
-      // Only draw if frame changed or canvas was cleared/resized (tracked via index for now)
       if (idx !== lastRenderedIndex.current) {
         lastRenderedIndex.current = idx;
         const img = imagesRef.current[idx];
 
-        // Simple fallback
         const finalImg = img?.complete ? img : imagesRef.current.find((im, i) => Math.abs(i - idx) < 5 && im.complete);
 
         if (finalImg) {
@@ -241,7 +228,13 @@ export default function HeroSequence({ scrollRef }: HeroSequenceProps) {
         </div>
         {!isLoaded && (
           <div className="absolute inset-0 flex items-center justify-center z-50 bg-[#0a0505]">
-              <div className="w-12 h-12 border-2 text-[var(--accent-hover)] border-t-transparent rounded-full animate-spin" />
+              <div className="text-center">
+                  <div className="w-12 h-12 border-2 border-[var(--accent-hover)] border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+                  {/* 🟢 PROGRESS DISPLAY */}
+                  <p className="text-sm uppercase tracking-[0.4em] text-[var(--accent-hover)] font-bold opacity-60">
+                      Loading {loadingProgress}%
+                  </p>
+              </div>
           </div>
         )}
         <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-black/40 pointer-events-none z-30" />
